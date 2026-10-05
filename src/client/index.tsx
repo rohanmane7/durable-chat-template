@@ -84,20 +84,38 @@ function App() {
   const Face = ({ src, label }: { src?: string; label: string }) => src ? <img className="face" src={src} alt={label} /> : <div className="face placeholder">{label}</div>;
   const hpPapa = state?.hp.papa ?? 100; const hpVillain = state?.hp.villain ?? 100;
 
+  const fighting = state?.phase === "fight";
+  const waitingForFriend = !state?.players.villain && state?.phase !== "victory";
   return <main className="game">
     <header><div><b>ROOM</b> <span className="code">{room}</span><button className="copy" onClick={() => { navigator.clipboard.writeText(room); setCopied(true); window.setTimeout(() => setCopied(false), 1200); }}>{copied ? "COPIED" : "COPY CODE"}</button></div>
       <div className={state?.players.villain ? "online" : "waiting"}>{state?.players.villain ? "● VILLAIN CONNECTED" : "● WAITING FOR VILLAIN"}</div></header>
     {error && <div className="error">{error}</div>}
-    <section className="arena">
-      <div className={"fighter papa " + (flash === "papa" ? "hit" : "")}><Face src={state?.faces.papa} label="HERO" /><h2>🦸 HERO</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b></div>
-      <div className="vs">VS</div>
-      <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}><Face src={state?.faces.villain} label="VILLAIN" /><h2>😈 VILLAIN</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b></div>
-    </section>
-    {role === "papa" && <section className="controls"><h3>{state?.phase === "lobby" ? "WAITING FOR YOUR FRIEND…" : "HERO ATTACKS"}</h3>
-      <div className="buttons"><button disabled={state?.phase !== "fight"} onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div>
-      <div className="uploads"><label>PAPA FACE<input ref={papaInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "papa")} /></label><label>VILLAIN FACE<input ref={villainInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "villain")} /></label><label>HEROINE FACE<input ref={heroineInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "heroine")} /></label></div>
+
+    {waitingForFriend && <section className="lobby-screen">
+      <div className="lobby-card">
+        <div className="lobby-icon">⚔️</div>
+        <h1>LOVE & VILLAIN</h1>
+        <h2>WAITING FOR VILLAIN</h2>
+        <p>Share this 6-digit room code with your friend.</p>
+        <div className="big-code">{room}</div>
+        <button className="copy-big" onClick={() => { navigator.clipboard.writeText(room); setCopied(true); window.setTimeout(() => setCopied(false), 1200); }}>{copied ? "✓ COPIED" : "COPY ROOM CODE"}</button>
+        <div className="waiting-dot">● Waiting for your friend to join…</div>
+      </div>
     </section>}
-    {role === "villain" && <section className="controls villain-controls"><h3>😈 VILLAIN</h3><div className="buttons"><button disabled={state?.phase !== "fight"} onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div></section>}
+
+    {fighting && <>
+      <section className="arena">
+        <div className={"fighter papa " + (flash === "papa" ? "hit" : "")}><Face src={state?.faces.papa} label="HERO" /><h2>🦸 HERO</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b></div>
+        <div className="vs">VS</div>
+        <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}><Face src={state?.faces.villain} label="VILLAIN" /><h2>😈 VILLAIN</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b></div>
+      </section>
+      {role === "papa" && <section className="controls"><h3>HERO ATTACKS</h3>
+        <div className="buttons"><button onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div>
+        <div className="uploads"><label>PAPA FACE<input ref={papaInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "papa")} /></label><label>VILLAIN FACE<input ref={villainInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "villain")} /></label><label>HEROINE FACE<input ref={heroineInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "heroine")} /></label></div>
+      </section>}
+      {role === "villain" && <section className="controls villain-controls"><h3>😈 VILLAIN</h3><div className="buttons"><button onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div></section>}
+    </>}
+
     {(victory || state?.phase === "victory") && <div className="victory"><div className="winText">🏆 PAPA WINS! ❤️</div><div className="hearts">❤️ 💕 ❤️ 💕 ❤️</div><div className="rescue"><Face src={state?.faces.papa} label="HERO" /><span>➡️</span><div className="cage">🔓 💕</div><span>➡️</span><Face src={state?.faces.heroine} label="HEROINE" /></div>{role === "papa" && <button onClick={() => { setVictory(false); send({ type: "reset" }); }}>PLAY AGAIN</button>}</div>}
   </main>;
 }

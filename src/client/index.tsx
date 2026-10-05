@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import { usePartySocket } from "partysocket/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from "react-router";
-import type { FaceSet, GameState, Role, ServerMessage } from "../shared";
+import type { CharacterNames, FaceSet, GameState, Role, ServerMessage } from "../shared";
 
 function makeCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
 
@@ -22,6 +22,8 @@ function App() {
   const [flash, setFlash] = useState<Role | null>(null);
   const [action, setAction] = useState<{ role: Role; attack: "punch" | "kick" | "beam" } | null>(null);
   const [error, setError] = useState("");
+  const [names, setNames] = useState<CharacterNames>({ papa: "HERO", villain: "VILLAIN", heroine: "HEROINE" });
+  const namesInitialized = useRef(false);
   const papaInput = useRef<HTMLInputElement>(null);
   const villainInput = useRef<HTMLInputElement>(null);
   const heroineInput = useRef<HTMLInputElement>(null);
@@ -36,6 +38,7 @@ function App() {
       const msg = JSON.parse(evt.data as string) as ServerMessage;
       if (msg.type === "state") {
         setState(msg.state);
+        if (msg.state.names && !namesInitialized.current) { setNames(msg.state.names); namesInitialized.current = true; }
         if (msg.state.players[role]) setJoined(true);
       } else if (msg.type === "attack") {
         setFlash(msg.attacker);
@@ -67,6 +70,7 @@ function App() {
 
   const send = (message: object) => socket.send(JSON.stringify(message));
   const attack = (name: "punch" | "kick" | "beam") => send({ type: "attack", attack: name });
+  const updateName = (key: keyof CharacterNames, value: string) => { const next = { ...names, [key]: value }; setNames(next); send({ type: "names", names: next }); };
   const readFace = (file: File, key: keyof FaceSet) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -115,6 +119,19 @@ function App() {
         <p>Share this 6-digit room code with your friend.</p>
         <div className="big-code">{room}</div>
         <button className="copy-big" onClick={() => { navigator.clipboard.writeText(room); setCopied(true); window.setTimeout(() => setCopied(false), 1200); }}>{copied ? "✓ COPIED" : "COPY ROOM CODE"}</button>
+        <div className="creator-setup">
+          <h3>CHARACTER SETUP</h3>
+          <div className="name-grid">
+            <label>HERO NAME<input value={names.papa} onChange={e => updateName("papa", e.target.value)} /></label>
+            <label>VILLAIN NAME<input value={names.villain} onChange={e => updateName("villain", e.target.value)} /></label>
+            <label>HEROINE NAME<input value={names.heroine} onChange={e => updateName("heroine", e.target.value)} /></label>
+          </div>
+          <div className="face-grid">
+            <label>HERO FACE<input ref={papaInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "papa")} /></label>
+            <label>VILLAIN FACE<input ref={villainInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "villain")} /></label>
+            <label>HEROINE FACE<input ref={heroineInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "heroine")} /></label>
+          </div>
+        </div>
         <div className="waiting-dot">● Waiting for your friend to join…</div>
       </div>
     </section>}
@@ -126,29 +143,29 @@ function App() {
           <div className="ring">
             <div className="ring-rope rope-1" /><div className="ring-rope rope-2" /><div className="ring-rope rope-3" />
             <div className={"fighter papa " + (flash === "papa" ? "hit" : "")}>
-              <Character role="papa" src={state?.faces.papa} label="HERO" />
-              <h2>🦸 HERO</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b>
+              <Character role="papa" src={state?.faces.papa} label={names.papa} />
+              <h2>🦸 {names.papa}</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b>
             </div>
             <div className="ring-vs">VS</div>
             <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}>
-              <Character role="villain" src={state?.faces.villain} label="VILLAIN" />
-              <h2>😈 VILLAIN</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b>
+              <Character role="villain" src={state?.faces.villain} label={names.villain} />
+              <h2>😈 {names.villain}</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b>
             </div>
           </div>
         </div>
         <div className="cage-side">
-          <div className="cage-title">❤️ HEROINE</div>
+          <div className="cage-title">❤️ {names.heroine}</div>
           <div className="side-cage">
             <div className="cage-bars" />
             <div className="cage-lock">🔒</div>
-            <Character role="heroine" src={state?.faces.heroine} label="HEROINE" />
+            <Character role="heroine" src={state?.faces.heroine} label={names.heroine} />
           </div>
           <div className="cage-note">Rescue her after the villain falls.</div>
         </div>
       </section>
-      {role === "papa" && <section className="controls"><h3>HERO ATTACKS</h3>
+      {role === "papa" && <section className="controls"><h3>{names.papa} ATTACKS</h3>
         <div className="buttons"><button onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div>
-        <div className="uploads"><label>PAPA FACE<input ref={papaInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "papa")} /></label><label>VILLAIN FACE<input ref={villainInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "villain")} /></label><label>HEROINE FACE<input ref={heroineInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "heroine")} /></label></div>
+        
       </section>}
       {role === "villain" && <section className="controls villain-controls"><h3>😈 VILLAIN</h3><div className="buttons"><button onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div></section>}
     </>}

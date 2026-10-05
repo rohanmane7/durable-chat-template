@@ -44,6 +44,10 @@ function App() {
   });
 
   useEffect(() => {
+    if (isRoom) setJoined(true);
+  }, [isRoom]);
+
+  useEffect(() => {
     if (isRoom && joined) socket.send(JSON.stringify({ type: "join", role, roomCode: room }));
   }, [isRoom, joined, role, room]);
 

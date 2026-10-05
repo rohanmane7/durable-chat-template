@@ -48,7 +48,7 @@ function App() {
   }, [isRoom, joined, role, room]);
 
   if (!isRoom) return <main className="landing"><section className="card">
-    <h1>🏆 PAPA WINS ❤️</h1><p>Real-time 2-player battle</p>
+    <h1>❤️ LOVE & VILLAIN</h1><p>Real-time 2-player battle</p>
     <button onClick={() => { const c = makeCode(); sessionStorage.setItem("papa-role", "papa"); setRole("papa"); navigate("/" + c); setJoined(true); }}>CREATE ROOM</button>
     <div className="divider">OR</div>
     <input value={joinCode} onChange={e => setJoinCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit room code" inputMode="numeric" />
@@ -82,7 +82,7 @@ function App() {
       <div className={state?.players.villain ? "online" : "waiting"}>{state?.players.villain ? "● VILLAIN CONNECTED" : "● WAITING FOR VILLAIN"}</div></header>
     {error && <div className="error">{error}</div>}
     <section className="arena">
-      <div className={"fighter papa " + (flash === "papa" ? "hit" : "")}><Face src={state?.faces.papa} label="PAPA" /><h2>👑 PAPA</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b></div>
+      <div className={"fighter papa " + (flash === "papa" ? "hit" : "")}><Face src={state?.faces.papa} label="HERO" /><h2>🦸 HERO</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b></div>
       <div className="vs">VS</div>
       <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}><Face src={state?.faces.villain} label="VILLAIN" /><h2>😈 VILLAIN</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b></div>
     </section>
@@ -91,7 +91,7 @@ function App() {
       <div className="uploads"><label>PAPA FACE<input ref={papaInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "papa")} /></label><label>VILLAIN FACE<input ref={villainInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "villain")} /></label><label>HEROINE FACE<input ref={heroineInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "heroine")} /></label></div>
     </section>}
     {role === "villain" && <section className="controls villain-controls"><h3>😈 VILLAIN</h3><div className="buttons"><button disabled={state?.phase !== "fight"} onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div></section>}
-    {(victory || state?.phase === "victory") && <div className="victory"><div className="winText">🏆 PAPA WINS! ❤️</div><div className="hearts">❤️ 💕 ❤️ 💕 ❤️</div><div className="rescue"><Face src={state?.faces.papa} label="PAPA" /><span>➡️</span><div className="cage">🔓 💕</div><span>➡️</span><Face src={state?.faces.heroine} label="HEROINE" /></div>{role === "papa" && <button onClick={() => { setVictory(false); send({ type: "reset" }); }}>PLAY AGAIN</button>}</div>}
+    {(victory || state?.phase === "victory") && <div className="victory"><div className="winText">🏆 PAPA WINS! ❤️</div><div className="hearts">❤️ 💕 ❤️ 💕 ❤️</div><div className="rescue"><Face src={state?.faces.papa} label="HERO" /><span>➡️</span><div className="cage">🔓 💕</div><span>➡️</span><Face src={state?.faces.heroine} label="HEROINE" /></div>{role === "papa" && <button onClick={() => { setVictory(false); send({ type: "reset" }); }}>PLAY AGAIN</button>}</div>}
   </main>;
 }
 function Root() { return <BrowserRouter><Routes><Route path="/" element={<App />} /><Route path="/:room" element={<App />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></BrowserRouter>; }

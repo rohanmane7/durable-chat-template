@@ -10,7 +10,7 @@ function App() {
   const { room = "" } = useParams();
   const navigate = useNavigate();
   const isRoom = /^\d{6}$/.test(room);
-  const [role, setRole] = useState<Role>(() => sessionStorage.getItem("papa-role") === "villain" ? "villain" : "papa");
+  const [role, setRole] = useState<Role>(() => {\n    const saved = sessionStorage.getItem("papa-role");\n    return saved === "papa" ? "papa" : "villain";\n  });
   const [joined, setJoined] = useState(false);
   const [state, setState] = useState<GameState | null>(null);
   const [joinCode, setJoinCode] = useState("");

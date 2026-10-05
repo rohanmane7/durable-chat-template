@@ -121,14 +121,29 @@ function App() {
 
     {fighting && <>
       <section className="battle-stage">
-        <div className={"fighter papa " + (flash === "papa" ? "hit" : "")}>
-          <Character role="papa" src={state?.faces.papa} label="HERO" />
-          <h2>🦸 HERO</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b>
+        <div className="ring-wrap">
+          <div className="ring-sign">LOVE &amp; VILLAIN</div>
+          <div className="ring">
+            <div className="ring-rope rope-1" /><div className="ring-rope rope-2" /><div className="ring-rope rope-3" />
+            <div className={"fighter papa " + (flash === "papa" ? "hit" : "")}>
+              <Character role="papa" src={state?.faces.papa} label="HERO" />
+              <h2>🦸 HERO</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b>
+            </div>
+            <div className="ring-vs">VS</div>
+            <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}>
+              <Character role="villain" src={state?.faces.villain} label="VILLAIN" />
+              <h2>😈 VILLAIN</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b>
+            </div>
+          </div>
         </div>
-        <div className="vs">VS</div>
-        <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}>
-          <Character role="villain" src={state?.faces.villain} label="VILLAIN" />
-          <h2>😈 VILLAIN</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b>
+        <div className="cage-side">
+          <div className="cage-title">❤️ HEROINE</div>
+          <div className="side-cage">
+            <div className="cage-bars" />
+            <div className="cage-lock">🔒</div>
+            <Character role="heroine" src={state?.faces.heroine} label="HEROINE" />
+          </div>
+          <div className="cage-note">Rescue her after the villain falls.</div>
         </div>
       </section>
       {role === "papa" && <section className="controls"><h3>HERO ATTACKS</h3>

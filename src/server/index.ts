@@ -7,7 +7,6 @@ const freshState = (roomCode: string): GameState => ({ roomCode, hostId: null, p
 export class Chat extends Server<Env> {
   static options = { hibernate: true };
   state!: GameState;
-  roles = new Map<string, Role>();
 
   onStart() {
     this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS game_state (id INTEGER PRIMARY KEY, data TEXT NOT NULL)");
@@ -24,10 +23,9 @@ export class Chat extends Server<Env> {
   onConnect(connection: Connection) { this.send(connection, { type: "state", state: this.state }); }
 
   onClose(connection: Connection) {
-    const role = this.roles.get(connection.id);
+    const role = (connection.state as { role?: Role } | null)?.role;
     if (role === "papa" && this.state.players.papa === connection.id) this.state.players.papa = null;
     if (role === "villain" && this.state.players.villain === connection.id) this.state.players.villain = null;
-    this.roles.delete(connection.id);
     if (this.state.phase === "fight" && !this.state.players.villain) this.state.phase = "lobby";
     this.broadcastState();
   }
@@ -42,11 +40,11 @@ export class Chat extends Server<Env> {
         if (this.state.players.papa && this.state.players.papa !== connection.id) return;
         this.state.hostId ||= connection.id;
         this.state.players.papa = connection.id;
-        this.roles.set(connection.id, "papa");
+        connection.setState({ role: "papa" });
       } else {
         if (!this.state.players.papa || (this.state.players.villain && this.state.players.villain !== connection.id)) return;
         this.state.players.villain = connection.id;
-        this.roles.set(connection.id, "villain");
+        connection.setState({ role: "villain" });
       }
       if (this.state.players.papa && this.state.players.villain && this.state.phase === "lobby") this.state.phase = "fight";
       this.broadcastState();
@@ -86,7 +84,7 @@ export class Chat extends Server<Env> {
       if (role !== "papa" || connection.id !== this.state.hostId) return;
       const faces = this.state.faces;
       this.state = { ...freshState(this.state.roomCode), hostId: connection.id, players: { papa: connection.id, villain: null }, faces };
-      this.roles.set(connection.id, "papa");
+      connection.setState({ role: "papa" });
       this.broadcastState();
     }
   }

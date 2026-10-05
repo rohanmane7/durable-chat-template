@@ -19,6 +19,7 @@ function App() {
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [victory, setVictory] = useState(false);
+  const [victoryStep, setVictoryStep] = useState(0);
   const [flash, setFlash] = useState<Role | null>(null);
   const [action, setAction] = useState<{ role: Role; attack: "punch" | "kick" | "beam" } | null>(null);
   const [error, setError] = useState("");
@@ -47,6 +48,10 @@ function App() {
         window.setTimeout(() => setAction(null), 650);
       } else if (msg.type === "victory") {
         setVictory(true);
+        setVictoryStep(1);
+        window.setTimeout(() => setVictoryStep(2), 1200);
+        window.setTimeout(() => setVictoryStep(3), 2800);
+        window.setTimeout(() => setVictoryStep(4), 4300);
       }
     },
     onError: () => setError("Connection problem. Please refresh and try again."),
@@ -105,6 +110,7 @@ function App() {
   const hpPapa = state?.hp.papa ?? 100; const hpVillain = state?.hp.villain ?? 100;
 
   const fighting = state?.phase === "fight";
+  const battleVisible = fighting || state?.phase === "victory";
   const waitingForFriend = !state || (!state.players.villain && state.phase !== "victory");
   return <main className="game">
     <header><div><b>ROOM</b> <span className="code">{room}</span><button className="copy" onClick={() => { navigator.clipboard.writeText(room); setCopied(true); window.setTimeout(() => setCopied(false), 1200); }}>{copied ? "COPIED" : "COPY CODE"}</button></div>
@@ -136,8 +142,8 @@ function App() {
       </div>
     </section>}
 
-    {fighting && <>
-      <section className="battle-stage">
+    {battleVisible && <>
+      <section className={"battle-stage victory-step-" + victoryStep}>
         <div className="ring-wrap">
           <div className="ring-sign">LOVE &amp; VILLAIN</div>
           <div className="ring">
@@ -146,35 +152,35 @@ function App() {
               <Character role="papa" src={state?.faces.papa} label={names.papa} />
               <h2>🦸 {names.papa}</h2><div className="hp"><i style={{ width: hpPapa + "%" }} /></div><b>{hpPapa} HP</b>
             </div>
-            <div className="ring-vs">VS</div>
-            <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}>
+            <div className="ring-vs">{state?.phase === "victory" ? "💥" : "VS"}</div>
+            <div className={"fighter villain " + (flash === "villain" ? "hit " : "") + (state?.phase === "victory" && victoryStep >= 1 ? "fallen" : "")}>
               <Character role="villain" src={state?.faces.villain} label={names.villain} />
               <h2>😈 {names.villain}</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b>
             </div>
           </div>
         </div>
-        <div className="cage-side">
+        <div className={"cage-side " + (victoryStep >= 3 ? "cage-open" : "")}>
           <div className="cage-title">❤️ {names.heroine}</div>
           <div className="side-cage">
             <div className="cage-bars" />
             <div className="cage-lock">🔒</div>
-            <Character role="heroine" src={state?.faces.heroine} label={names.heroine} />
+            <div className={victoryStep >= 2 ? "heroine-free" : "heroine-trapped"}><Character role="heroine" src={state?.faces.heroine} label={names.heroine} /></div>
           </div>
           <div className="cage-note">Rescue her after the villain falls.</div>
         </div>
       </section>
-      {role === "papa" && <section className="controls"><h3>{names.papa} ATTACKS</h3>
+      {role === "papa" && fighting && <section className="controls"><h3>{names.papa} ATTACKS</h3>
         <div className="buttons"><button onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div>
         
       </section>}
-      {role === "villain" && <section className="controls villain-controls"><h3>😈 VILLAIN</h3><div className="buttons"><button onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div></section>}
+      {role === "villain" && fighting && <section className="controls villain-controls"><h3>😈 VILLAIN</h3><div className="buttons"><button onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div></section>}
     </>}
 
-    {(victory || state?.phase === "victory") && <div className="victory"><div className="winText">🏆 PAPA WINS! ❤️</div><div className="hearts">❤️ 💕 ❤️ 💕 ❤️</div><div className="rescue">
+    {victoryStep >= 4 && <div className="victory"><div className="winText">🏆 PAPA WINS! ❤️</div><div className="hearts">❤️ 💕 ❤️ 💕 ❤️</div><div className="rescue">
       <div className="rescue-hero"><Character role="papa" src={state?.faces.papa} label="HERO" /></div>
       <span>➡️</span><div className="cage">🔒<div className="heroine-cage"><Character role="heroine" src={state?.faces.heroine} label="HEROINE" /></div></div>
       <span>➡️</span><div className="rescue-heroine"><Character role="heroine" src={state?.faces.heroine} label="HEROINE" /></div>
-    </div>{role === "papa" && <button onClick={() => { setVictory(false); send({ type: "reset" }); }}>PLAY AGAIN</button>}</div>}
+    </div>{role === "papa" && <button onClick={() => { setVictory(false); setVictoryStep(0); send({ type: "reset" }); }}>PLAY AGAIN</button>}</div>}
   </main>;
 }
 function Root() { return <BrowserRouter><Routes><Route path="/" element={<App />} /><Route path="/:room" element={<App />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></BrowserRouter>; }

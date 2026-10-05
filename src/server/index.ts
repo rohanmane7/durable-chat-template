@@ -1,88 +1,125 @@
-import {
-	type Connection,
-	Server,
-	type WSMessage,
-	routePartykitRequest,
-} from "partyserver";
+import { Server, routePartykitRequest, type Connection, type WSMessage } from "partyserver";
+import type { ClientMessage, FaceSet, GameState, Role, ServerMessage } from "../shared";
+import { DAMAGE } from "../shared";
 
-import type { ChatMessage, Message } from "../shared";
+const freshState = (roomCode: string): GameState => ({
+  roomCode,
+  hostId: null,
+  players: { papa: null, villain: null },
+  hp: { papa: 100, villain: 100 },
+  faces: {},
+  phase: "lobby",
+  winner: null,
+  victoryStartedAt: null,
+});
 
 export class Chat extends Server<Env> {
-	static options = { hibernate: true };
+  static options = { hibernate: true };
+  state!: GameState;
+  roles = new Map<string, Role>();
 
-	messages = [] as ChatMessage[];
+  onStart() {
+    const saved = this.ctx.storage.kv.get<GameState>("game");
+    this.state = saved ? saved : freshState(this.name.match(/\d{6}$/)?.[0] || this.name);
+  }
 
-	broadcastMessage(message: Message, exclude?: string[]) {
-		this.broadcast(JSON.stringify(message), exclude);
-	}
+  private save() {
+    this.ctx.storage.kv.put("game", this.state);
+  }
 
-	onStart() {
-		// this is where you can initialize things that need to be done before the server starts
-		// for example, load previous messages from a database or a service
+  private send(connection: Connection, message: ServerMessage) {
+    connection.send(JSON.stringify(message));
+  }
 
-		// create the messages table if it doesn't exist
-		this.ctx.storage.sql.exec(
-			`CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, user TEXT, role TEXT, content TEXT)`,
-		);
+  private broadcastState() {
+    this.broadcast(JSON.stringify({ type: "state", state: this.state } satisfies ServerMessage));
+    this.save();
+  }
 
-		// load the messages from the database
-		this.messages = this.ctx.storage.sql
-			.exec(`SELECT * FROM messages`)
-			.toArray() as ChatMessage[];
-	}
+  onConnect(connection: Connection) {
+    this.send(connection, { type: "state", state: this.state });
+  }
 
-	onConnect(connection: Connection) {
-		connection.send(
-			JSON.stringify({
-				type: "all",
-				messages: this.messages,
-			} satisfies Message),
-		);
-	}
+  onClose(connection: Connection) {
+    const role = this.roles.get(connection.id);
+    if (role === "papa" && this.state.players.papa === connection.id) this.state.players.papa = null;
+    if (role === "villain" && this.state.players.villain === connection.id) this.state.players.villain = null;
+    this.roles.delete(connection.id);
+    if (this.state.phase === "fight" && !this.state.players.villain) this.state.phase = "lobby";
+    this.broadcastState();
+  }
 
-	saveMessage(message: ChatMessage) {
-		// check if the message already exists
-		const existingMessage = this.messages.find((m) => m.id === message.id);
-		if (existingMessage) {
-			this.messages = this.messages.map((m) => {
-				if (m.id === message.id) {
-					return message;
-				}
-				return m;
-			});
-		} else {
-			this.messages.push(message);
-		}
+  onMessage(connection: Connection, raw: WSMessage) {
+    if (typeof raw !== "string") return;
+    let msg: ClientMessage;
+    try { msg = JSON.parse(raw); } catch { return; }
 
-		// Use parameterized queries to prevent SQL injection
-		this.ctx.storage.sql.exec(
-			`INSERT INTO messages (id, user, role, content) VALUES (?, ?, ?, ?)
-			 ON CONFLICT (id) DO UPDATE SET content = ?`,
-			message.id,
-			message.user,
-			message.role,
-			message.content,
-			message.content,
-		);
-	}
+    if (msg.type === "join") {
+      const requested = msg.role;
+      if (requested === "papa") {
+        if (this.state.players.papa && this.state.players.papa !== connection.id) {
+          this.send(connection, { type: "state", state: this.state });
+          return;
+        }
+        this.state.hostId ||= connection.id;
+        this.state.players.papa = connection.id;
+        this.roles.set(connection.id, "papa");
+      } else {
+        if (!this.state.players.papa || (this.state.players.villain && this.state.players.villain !== connection.id)) {
+          this.send(connection, { type: "state", state: this.state });
+          return;
+        }
+        this.state.players.villain = connection.id;
+        this.roles.set(connection.id, "villain");
+      }
+      if (this.state.players.papa && this.state.players.villain && this.state.phase === "lobby") this.state.phase = "fight";
+      this.broadcastState();
+      return;
+    }
 
-	onMessage(connection: Connection, message: WSMessage) {
-		// let's broadcast the raw message to everyone else
-		this.broadcast(message);
+    const role = this.roles.get(connection.id);
+    if (!role) return;
 
-		// let's update our local messages store
-		const parsed = JSON.parse(message as string) as Message;
-		if (parsed.type === "add" || parsed.type === "update") {
-			this.saveMessage(parsed);
-		}
-	}
+    if (msg.type === "faces") {
+      if (role !== "papa" || connection.id !== this.state.hostId) return;
+      const faces: FaceSet = {};
+      for (const key of ["papa", "villain", "heroine"] as const) {
+        const value = msg.faces[key];
+        if (typeof value === "string" && value.startsWith("data:image/")) faces[key] = value.slice(0, 1_500_000);
+      }
+      this.state.faces = faces;
+      this.broadcastState();
+      return;
+    }
+
+    if (msg.type === "attack") {
+      if (this.state.phase !== "fight") return;
+      const damage = DAMAGE[msg.attack];
+      const target: Role = role === "papa" ? "villain" : "papa";
+      this.state.hp[target] = Math.max(0, this.state.hp[target] - damage);
+      this.broadcast(JSON.stringify({ type: "attack", attacker: role, attack: msg.attack, damage } satisfies ServerMessage));
+      if (this.state.hp.villain <= 0) {
+        this.state.phase = "victory";
+        this.state.winner = "papa";
+        this.state.victoryStartedAt = Date.now();
+        this.broadcast(JSON.stringify({ type: "victory", winner: "papa" } satisfies ServerMessage));
+      }
+      this.broadcastState();
+      return;
+    }
+
+    if (msg.type === "reset") {
+      if (role !== "papa" || connection.id !== this.state.hostId) return;
+      const faces = this.state.faces;
+      this.state = { ...freshState(this.state.roomCode), hostId: connection.id, players: { papa: connection.id, villain: null }, faces };
+      this.roles.set(connection.id, "papa");
+      this.broadcastState();
+    }
+  }
 }
 
 export default {
-	async fetch(request, env) {
-		return (
-			(await routePartykitRequest(request, { ...env })) ||
-			env.ASSETS.fetch(request)
-		);
-	},
+  async fetch(request, env) {
+    return (await routePartykitRequest(request, { ...env })) || env.ASSETS.fetch(request);
+  },
 } satisfies ExportedHandler<Env>;

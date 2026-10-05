@@ -1,55 +1,23 @@
-export type ChatMessage = {
-	id: string;
-	content: string;
-	user: string;
-	role: "user" | "assistant";
+export type Role = "papa" | "villain";
+export type FaceSet = { papa?: string; villain?: string; heroine?: string };
+export type GameState = {
+  roomCode: string;
+  hostId: string | null;
+  players: { papa: string | null; villain: string | null };
+  hp: { papa: number; villain: number };
+  faces: FaceSet;
+  phase: "lobby" | "fight" | "victory";
+  winner: "papa" | null;
+  victoryStartedAt: number | null;
 };
-
-export type Message =
-	| {
-			type: "add";
-			id: string;
-			content: string;
-			user: string;
-			role: "user" | "assistant";
-	  }
-	| {
-			type: "update";
-			id: string;
-			content: string;
-			user: string;
-			role: "user" | "assistant";
-	  }
-	| {
-			type: "all";
-			messages: ChatMessage[];
-	  };
-
-export const names = [
-	"Alice",
-	"Bob",
-	"Charlie",
-	"David",
-	"Eve",
-	"Frank",
-	"Grace",
-	"Heidi",
-	"Ivan",
-	"Judy",
-	"Kevin",
-	"Linda",
-	"Mallory",
-	"Nancy",
-	"Oscar",
-	"Peggy",
-	"Quentin",
-	"Randy",
-	"Steve",
-	"Trent",
-	"Ursula",
-	"Victor",
-	"Walter",
-	"Xavier",
-	"Yvonne",
-	"Zoe",
-];
+export type ClientMessage =
+  | { type: "join"; role: Role; roomCode: string }
+  | { type: "attack"; attack: "punch" | "kick" | "beam" }
+  | { type: "faces"; faces: FaceSet }
+  | { type: "reset" }
+  | { type: "ping" };
+export type ServerMessage =
+  | { type: "state"; state: GameState }
+  | { type: "attack"; attacker: Role; attack: "punch" | "kick" | "beam"; damage: number }
+  | { type: "victory"; winner: "papa" };
+export const DAMAGE = { punch: 20, kick: 26, beam: 34 } as const;

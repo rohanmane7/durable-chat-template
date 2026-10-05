@@ -93,7 +93,7 @@ function App() {
       <div className="vs">VS</div>
       <div className={"fighter villain " + (flash === "villain" ? "hit" : "")}><Face src={state?.faces.villain} label="VILLAIN" /><h2>😈 VILLAIN</h2><div className="hp"><i style={{ width: hpVillain + "%" }} /></div><b>{hpVillain} HP</b></div>
     </section>
-    {role === "papa" && <section className="controls"><h3>{state?.phase === "lobby" ? "WAITING FOR YOUR FRIEND…" : "PAPA ATTACKS"}</h3>
+    {role === "papa" && <section className="controls"><h3>{state?.phase === "lobby" ? "WAITING FOR YOUR FRIEND…" : "HERO ATTACKS"}</h3>
       <div className="buttons"><button disabled={state?.phase !== "fight"} onClick={() => attack("punch")}>👊 PUNCH <small>20</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("kick")}>🦵 KICK <small>26</small></button><button disabled={state?.phase !== "fight"} onClick={() => attack("beam")}>⚡ BEAM <small>34</small></button></div>
       <div className="uploads"><label>PAPA FACE<input ref={papaInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "papa")} /></label><label>VILLAIN FACE<input ref={villainInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "villain")} /></label><label>HEROINE FACE<input ref={heroineInput} type="file" accept="image/*" onChange={e => e.target.files?.[0] && readFace(e.target.files[0], "heroine")} /></label></div>
     </section>}

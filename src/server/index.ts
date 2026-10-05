@@ -51,7 +51,10 @@ export class Chat extends Server<Env> {
       return;
     }
 
-    const role = this.roles.get(connection.id);
+    const savedRole = (connection.state as { role?: Role } | null)?.role;
+    const role: Role | null = savedRole
+      ?? (this.state.players.papa === connection.id ? "papa"
+      : this.state.players.villain === connection.id ? "villain" : null);
     if (!role) return;
 
     if (msg.type === "faces") {

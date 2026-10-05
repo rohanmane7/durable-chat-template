@@ -2,7 +2,7 @@ import { Server, routePartykitRequest, type Connection, type WSMessage } from "p
 import type { ClientMessage, FaceSet, GameState, Role, ServerMessage } from "../shared";
 import { DAMAGE } from "../shared";
 
-const freshState = (roomCode: string): GameState => ({ roomCode, hostId: null, players: { papa: null, villain: null }, hp: { papa: 100, villain: 100 }, faces: {}, phase: "lobby", winner: null, victoryStartedAt: null });
+const freshState = (roomCode: string): GameState => ({ roomCode, hostId: null, players: { papa: null, villain: null }, hp: { papa: 100, villain: 100 }, faces: {}, names: { papa: "HERO", villain: "VILLAIN", heroine: "HEROINE" }, phase: "lobby", winner: null, victoryStartedAt: null });
 
 export class Chat extends Server<Env> {
   static options = { hibernate: true };
@@ -57,6 +57,18 @@ export class Chat extends Server<Env> {
       : this.state.players.villain === connection.id ? "villain" : null);
     if (!role) return;
 
+    if (msg.type === "names") {
+      if (role !== "papa" || connection.id !== this.state.hostId) return;
+      const clean = (v: unknown, fallback: string) => typeof v === "string" ? v.trim().slice(0, 24) || fallback : fallback;
+      this.state.names = {
+        papa: clean(msg.names.papa, "HERO"),
+        villain: clean(msg.names.villain, "VILLAIN"),
+        heroine: clean(msg.names.heroine, "HEROINE"),
+      };
+      this.broadcastState();
+      return;
+    }
+
     if (msg.type === "faces") {
       if (role !== "papa" || connection.id !== this.state.hostId) return;
       const faces: FaceSet = {};
@@ -86,7 +98,8 @@ export class Chat extends Server<Env> {
     if (msg.type === "reset") {
       if (role !== "papa" || connection.id !== this.state.hostId) return;
       const faces = this.state.faces;
-      this.state = { ...freshState(this.state.roomCode), hostId: connection.id, players: { papa: connection.id, villain: null }, faces };
+      const names = this.state.names;
+      this.state = { ...freshState(this.state.roomCode), hostId: connection.id, players: { papa: connection.id, villain: null }, faces, names };
       connection.setState({ role: "papa" });
       this.broadcastState();
     }

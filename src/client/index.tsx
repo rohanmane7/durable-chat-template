@@ -85,7 +85,7 @@ function App() {
   const hpPapa = state?.hp.papa ?? 100; const hpVillain = state?.hp.villain ?? 100;
 
   const fighting = state?.phase === "fight";
-  const waitingForFriend = !state?.players.villain && state?.phase !== "victory";
+  const waitingForFriend = !state || (!state.players.villain && state.phase !== "victory");
   return <main className="game">
     <header><div><b>ROOM</b> <span className="code">{room}</span><button className="copy" onClick={() => { navigator.clipboard.writeText(room); setCopied(true); window.setTimeout(() => setCopied(false), 1200); }}>{copied ? "COPIED" : "COPY CODE"}</button></div>
       <div className={state?.players.villain ? "online" : "waiting"}>{state?.players.villain ? "● VILLAIN CONNECTED" : "● WAITING FOR VILLAIN"}</div></header>

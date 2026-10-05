@@ -1,11 +1,13 @@
 export type Role = "papa" | "villain";
 export type FaceSet = { papa?: string; villain?: string; heroine?: string };
+export type CharacterNames = { papa: string; villain: string; heroine: string };
 export type GameState = {
   roomCode: string;
   hostId: string | null;
   players: { papa: string | null; villain: string | null };
   hp: { papa: number; villain: number };
   faces: FaceSet;
+  names: CharacterNames;
   phase: "lobby" | "fight" | "victory";
   winner: "papa" | null;
   victoryStartedAt: number | null;

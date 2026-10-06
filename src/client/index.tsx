@@ -18,6 +18,7 @@ function App() {
   const [attackFx, setAttackFx] = useState<{ role: Role; attack: string } | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [draftNames, setDraftNames] = useState<CharacterNames>({ papa: "HERO", villain: "VILLAIN", heroine: "HEROINE" });
   const papaInput = useRef<HTMLInputElement>(null);
   const villainInput = useRef<HTMLInputElement>(null);
   const heroineInput = useRef<HTMLInputElement>(null);
@@ -85,7 +86,6 @@ function App() {
   };
 
   const names = state?.names ?? { papa: "HERO", villain: "VILLAIN", heroine: "HEROINE" };
-  const [draftNames, setDraftNames] = useState<CharacterNames>(names);
   useEffect(() => { if (state?.names) setDraftNames(state.names); }, [state?.names?.papa, state?.names?.villain, state?.names?.heroine]);
 
   const saveNames = () => send({ type: "names", names: draftNames });

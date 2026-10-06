@@ -1,8 +1,18 @@
 import { Server, routePartykitRequest, type Connection, type WSMessage } from "partyserver";
-import type { ClientMessage, FaceSet, GameState, Role, ServerMessage } from "../shared";
+import type { CharacterNames, ClientMessage, FaceSet, GameState, Role, ServerMessage } from "../shared";
 import { DAMAGE } from "../shared";
 
-const freshState = (roomCode: string): GameState => ({ roomCode, hostId: null, players: { papa: null, villain: null }, hp: { papa: 100, villain: 100 }, faces: {}, phase: "lobby", winner: null, victoryStartedAt: null });
+const freshState = (roomCode: string): GameState => ({
+  roomCode,
+  hostId: null,
+  players: { papa: null, villain: null },
+  hp: { papa: 100, villain: 100 },
+  faces: {},
+  names: { papa: "HERO", villain: "VILLAIN", heroine: "HEROINE" },
+  phase: "lobby",
+  winner: null,
+  victoryStartedAt: null,
+});
 
 export class Chat extends Server<Env> {
   static options = { hibernate: true };
@@ -12,13 +22,20 @@ export class Chat extends Server<Env> {
     this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS game_state (id INTEGER PRIMARY KEY, data TEXT NOT NULL)");
     const row = this.ctx.storage.sql.exec("SELECT data FROM game_state WHERE id = 1").toArray()[0] as { data?: string } | undefined;
     this.state = row?.data ? JSON.parse(row.data) as GameState : freshState(this.name);
+    if (!this.state.names) this.state.names = { papa: "HERO", villain: "VILLAIN", heroine: "HEROINE" };
   }
 
   private save() {
-    this.ctx.storage.sql.exec("INSERT INTO game_state (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = ?", JSON.stringify(this.state), JSON.stringify(this.state));
+    this.ctx.storage.sql.exec(
+      "INSERT INTO game_state (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = ?",
+      JSON.stringify(this.state), JSON.stringify(this.state)
+    );
   }
   private send(connection: Connection, message: ServerMessage) { connection.send(JSON.stringify(message)); }
-  private broadcastState() { this.broadcast(JSON.stringify({ type: "state", state: this.state } satisfies ServerMessage)); this.save(); }
+  private broadcastState() {
+    this.broadcast(JSON.stringify({ type: "state", state: this.state } satisfies ServerMessage));
+    this.save();
+  }
 
   onConnect(connection: Connection) { this.send(connection, { type: "state", state: this.state }); }
 
@@ -52,10 +69,23 @@ export class Chat extends Server<Env> {
     }
 
     const savedRole = (connection.state as { role?: Role } | null)?.role;
-    const role: Role | null = savedRole
-      ?? (this.state.players.papa === connection.id ? "papa"
-      : this.state.players.villain === connection.id ? "villain" : null);
+    const role: Role | null = savedRole ??
+      (this.state.players.papa === connection.id ? "papa" :
+      this.state.players.villain === connection.id ? "villain" : null);
     if (!role) return;
+
+    if (msg.type === "names") {
+      if (role !== "papa" || connection.id !== this.state.hostId) return;
+      const clean = (value: unknown, fallback: string) =>
+        typeof value === "string" ? value.trim().slice(0, 22) || fallback : fallback;
+      this.state.names = {
+        papa: clean(msg.names.papa, "HERO"),
+        villain: clean(msg.names.villain, "VILLAIN"),
+        heroine: clean(msg.names.heroine, "HEROINE"),
+      };
+      this.broadcastState();
+      return;
+    }
 
     if (msg.type === "faces") {
       if (role !== "papa" || connection.id !== this.state.hostId) return;
@@ -76,7 +106,9 @@ export class Chat extends Server<Env> {
       this.state.hp[target] = Math.max(0, this.state.hp[target] - damage);
       this.broadcast(JSON.stringify({ type: "attack", attacker: role, attack: msg.attack, damage } satisfies ServerMessage));
       if (this.state.hp.villain <= 0) {
-        this.state.phase = "victory"; this.state.winner = "papa"; this.state.victoryStartedAt = Date.now();
+        this.state.phase = "victory";
+        this.state.winner = "papa";
+        this.state.victoryStartedAt = Date.now();
         this.broadcast(JSON.stringify({ type: "victory", winner: "papa" } satisfies ServerMessage));
       }
       this.broadcastState();
@@ -86,7 +118,8 @@ export class Chat extends Server<Env> {
     if (msg.type === "reset") {
       if (role !== "papa" || connection.id !== this.state.hostId) return;
       const faces = this.state.faces;
-      this.state = { ...freshState(this.state.roomCode), hostId: connection.id, players: { papa: connection.id, villain: null }, faces };
+      const names: CharacterNames = this.state.names;
+      this.state = { ...freshState(this.state.roomCode), hostId: connection.id, players: { papa: connection.id, villain: null }, faces, names };
       connection.setState({ role: "papa" });
       this.broadcastState();
     }
